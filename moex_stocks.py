@@ -218,3 +218,4 @@ if __name__ == "__main__":
             except ValueError:
                 interval = 60
             monitor_moex(interval)
+# изменение
