@@ -50,8 +50,9 @@
 ---
 <img width="389" height="637" alt="image" src="https://github.com/user-attachments/assets/e5d6547a-6c8c-499b-9b6d-efbd08e1ced5" />
 ---
+>
 ## Как сайт выглядит сейчас
-
+>
 <img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/1d17b5d5-4dfb-4bfb-acaf-f209731494be" />
 
 
