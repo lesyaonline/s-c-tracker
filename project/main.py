@@ -3,7 +3,8 @@ S&C Tracker — Основное Flask-приложение
 Акции MOEX + Криптовалюты с реальными данными
 """
 import re
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+import os
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_from_directory
 from datetime import datetime, timedelta
 from functools import wraps
 
@@ -40,7 +41,6 @@ CRYPTO_ASSETS = {
     'tether-gold': 'Gold (XAUT)',
 }
 
-
 # ─── Декоратор авторизации ────────────────────────────────────────────────────
 
 def login_required(f):
@@ -51,15 +51,17 @@ def login_required(f):
         return f(*args, **kwargs)
     return wrapper
 
-
 # ═══════════════════════════════════════════════════════════════════════════════
 #  СТРАНИЦЫ
 # ═══════════════════════════════════════════════════════════════════════════════
 
+@app.route('/logo.png')
+def serve_logo():
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'logo.png')
+
 @app.route('/', methods=['GET', 'POST'])
 def login_page():
-    if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+    session.clear()
 
     if request.method == 'POST':
         login_val = request.form.get('login', '').strip()
@@ -81,7 +83,6 @@ def login_page():
         return redirect(url_for('dashboard'))
 
     return render_template('login.html')
-
 
 @app.route('/logout')
 def logout():
@@ -116,12 +117,33 @@ def api_get_assets():
 
     assets = db.get_user_assets(session['user_id'])
     result = []
-
+    
+    # Слияние активов по коду
+    grouped = {}
     for a in assets:
-        atype       = a['asset_type']
-        code        = a['asset_code']
-        qty         = a['quantity']
-        p_price_usd = a['purchase_price']  # хранится в USD
+        code = a['asset_code']
+        if code not in grouped:
+            grouped[code] = {
+                'id': a['id'],
+                'asset_type': a['asset_type'],
+                'asset_code': code,
+                'asset_name': a['asset_name'],
+                'quantity': 0,
+                'total_invest': 0
+            }
+        grouped[code]['quantity'] += a['quantity']
+        grouped[code]['total_invest'] += (a['quantity'] * a['purchase_price'])
+
+    for code, g in grouped.items():
+        if g['quantity'] > 0:
+            g['purchase_price'] = g['total_invest'] / g['quantity']
+        else:
+            g['purchase_price'] = 0
+
+    for code, g in grouped.items():
+        atype       = g['asset_type']
+        qty         = g['quantity']
+        p_price_usd = g['purchase_price']
 
         # Получаем текущую цену в USD
         if atype == 'stock':
@@ -131,11 +153,8 @@ def api_get_assets():
             curr_usd = px.get_crypto_price(code) or p_price_usd
 
         # ─── Ключевые расчёты ─────────────────────────────────
-        # Инвестиции  = цена покупки × количество
-        invest_usd  = qty * p_price_usd
-        # Баланс      = текущая цена × количество
+        invest_usd  = g['total_invest']
         current_usd = qty * curr_usd
-        # Прибыль     = баланс − инвестиции
         profit_usd  = current_usd - invest_usd
         profit_pct  = (profit_usd / invest_usd * 100) if invest_usd > 0 else 0
 
@@ -143,23 +162,22 @@ def api_get_assets():
             return round(px.convert_usd(v, currency, rates), 2)
 
         result.append({
-            'id':             a['id'],
+            'id':             g['id'],
             'type':           atype,
             'code':           code,
-            'name':           a['asset_name'],
+            'name':           g['asset_name'],
             'quantity':       qty,
             'purchase_price': fmt(p_price_usd),
             'current_price':  fmt(curr_usd),
-            'invest_value':   fmt(invest_usd),   # Инвестиции
-            'current_value':  fmt(current_usd),  # Текущая стоимость (баланс)
-            'profit':         fmt(profit_usd),   # Прибыль
+            'invest_value':   fmt(invest_usd),
+            'current_value':  fmt(current_usd),
+            'profit':         fmt(profit_usd),
             'profit_percent': round(profit_pct, 2),
-            'purchase_date':  a['purchase_date'],
+            'purchase_date':  '—', # Указывается как средняя
             'currency_symbol': sym,
         })
 
     return jsonify(result)
-
 
 @app.route('/api/assets', methods=['POST'])
 @login_required
@@ -167,30 +185,32 @@ def api_add_asset():
     """
     Добавить актив.
     Тело: {type, code, name, quantity, purchase_price, purchase_date}
-    Все числовые значения — в USD.
     """
     data  = request.get_json(force=True)
     atype = data.get('type', '')
 
-    # ─── Валидация ────────────────────────────────────────────
     try:
         quantity = float(data.get('quantity', 0))
         price    = float(data.get('purchase_price', 0))
+        cur      = data.get('currency', 'usd').lower()
     except (TypeError, ValueError):
         return jsonify({'success': False, 'error': 'Некорректные числовые значения'}), 400
 
-    if quantity <= 0:
-        return jsonify({'success': False,
-                        'error': 'Количество должно быть больше нуля'}), 400
-    if price <= 0:
-        return jsonify({'success': False,
-                        'error': 'Цена покупки должна быть больше нуля'}), 400
+    rates = px.get_rates()
+    # Конвертируем цену в USD
+    if cur == 'rub':
+        price = price / rates['usd_rub']
+    elif cur == 'cny':
+        price = (price * rates['cny_rub']) / rates['usd_rub']
 
-    # Акции — только целые числа
+    if quantity <= 0:
+        return jsonify({'success': False, 'error': 'Количество должно быть больше нуля'}), 400
+    if price <= 0:
+        return jsonify({'success': False, 'error': 'Цена покупки должна быть больше нуля'}), 400
+
     if atype == 'stock':
         if quantity != int(quantity):
-            return jsonify({'success': False,
-                            'error': 'Количество акций должно быть целым числом'}), 400
+            return jsonify({'success': False, 'error': 'Количество акций должно быть целым числом'}), 400
         quantity = int(quantity)
 
     if not data.get('purchase_date'):
@@ -215,17 +235,10 @@ def api_delete_asset(asset_id):
     return jsonify({'success': True})
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  API СТАТИСТИКА ПОРТФЕЛЯ
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @app.route('/api/portfolio/stats')
 @login_required
 def api_portfolio_stats():
-    """
-    Суммарная статистика портфеля.
-    ?currency=usd|rub|cny
-    """
+    # ... Без изменений в stats ...
     currency = request.args.get('currency', 'usd')
     rates    = px.get_rates()
     usd_rub  = rates['usd_rub']
@@ -244,8 +257,8 @@ def api_portfolio_stats():
         else:
             c = px.get_crypto_price(a['asset_code']) or p_usd
 
-        total_invest_usd  += qty * p_usd   # инвестиции
-        total_current_usd += qty * c       # текущий баланс
+        total_invest_usd  += qty * p_usd
+        total_current_usd += qty * c
 
     profit_usd = total_current_usd - total_invest_usd
     pct        = (profit_usd / total_invest_usd * 100) if total_invest_usd > 0 else 0
@@ -254,29 +267,18 @@ def api_portfolio_stats():
         return round(px.convert_usd(v, currency, rates), 2)
 
     return jsonify({
-        'total_investment': cv(total_invest_usd),   # Инвестиции
-        'total_current':    cv(total_current_usd),  # Текущий баланс
-        'total_profit':     cv(profit_usd),         # Прибыль
+        'total_investment': cv(total_invest_usd), 
+        'total_current':    cv(total_current_usd),
+        'total_profit':     cv(profit_usd),       
         'profit_percent':   round(pct, 2),
         'currency_symbol':  px.currency_symbol(currency),
         'rates':            rates,
     })
 
 
-# ═══════════════════════════════════════════════════════════════════════════════
-#  API ГРАФИК ПОРТФЕЛЯ
-# ═══════════════════════════════════════════════════════════════════════════════
-
 @app.route('/api/portfolio/chart')
 @login_required
 def api_portfolio_chart():
-    """
-    Исторический график стоимости портфеля.
-    ?days=7|30|90  &currency=usd|rub|cny
-    График строится только с момента первой покупки до сегодня.
-    Данные — реальные с MOEX/CoinGecko, без прогнозов.
-    """
-    period   = int(request.args.get('days', 7))
     currency = request.args.get('currency', 'usd')
     rates    = px.get_rates()
     usd_rub  = rates['usd_rub']
@@ -285,7 +287,6 @@ def api_portfolio_chart():
     if not assets:
         return jsonify({'labels': [], 'data': []})
 
-    # Определяем самую раннюю дату покупки
     buy_dates = []
     for a in assets:
         try:
@@ -297,11 +298,9 @@ def api_portfolio_chart():
 
     today     = datetime.now()
     earliest  = min(buy_dates)
-    # Начало графика = max(самая ранняя покупка, today - period)
-    start     = max(earliest, today - timedelta(days=period))
+    start     = earliest
     days_load = (today - start).days + 5
 
-    # Предзагружаем историю для уникальных активов
     moex_hist   = {}
     crypto_hist = {}
     for a in assets:
@@ -320,7 +319,6 @@ def api_portfolio_chart():
         has_any = False
 
         for a in assets:
-            # Учитываем актив только начиная с даты покупки
             try:
                 buy_dt = datetime.strptime(a['purchase_date'], '%d.%m.%Y')
             except Exception:
@@ -350,16 +348,10 @@ def api_portfolio_chart():
 
     return jsonify({'labels': labels, 'data': data})
 
-
-# ─── API курсы ────────────────────────────────────────────────────────────────
-
 @app.route('/api/rates')
 @login_required
 def api_rates():
     return jsonify(px.get_rates())
-
-
-# ─── Запуск ───────────────────────────────────────────────────────────────────
 
 if __name__ == '__main__':
     db.init_db()
