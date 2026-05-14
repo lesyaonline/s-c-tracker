@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&C Tracker — Портфель</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+  ШАПКА
+══════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="logo">📊 S&amp;C Tracker</div>
+
+  <div class="header-right">
+
+    <!-- Имя пользователя -->
+    <div class="user-badge">👤 {{ login }}</div>
+
+    <!-- Настройки -->
+    <div class="settings-wrap">
+      <button class="btn-settings" onclick="toggleSettings()" title="Настройки">⚙️</button>
+
+      <div class="settings-panel" id="settingsPanel">
+        <div class="sp-title">Настройки</div>
+
+        <div class="sp-row">
+          <span>Валюта</span>
+          <div class="cur-btns">
+            <button class="cur-btn" data-cur="usd" onclick="setCurrency('usd')">$ USD</button>
+            <button class="cur-btn" data-cur="rub" onclick="setCurrency('rub')">₽ RUB</button>
+            <button class="cur-btn" data-cur="cny" onclick="setCurrency('cny')">¥ CNY</button>
+          </div>
+        </div>
+
+        <div class="sp-row theme-row">
+          <span>Тёмная тема</span>
+          <button
+            class="toggle"
+            id="themeToggle"
+            role="switch"
+            aria-checked="false"
+            onclick="toggleTheme()"
+          ></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Добавить актив -->
+    <button class="btn-add" onclick="openModal()">+ Добавить актив</button>
+
+    <!-- Выход -->
+    <a href="/logout" class="btn-logout">Выйти</a>
+
+  </div>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+  КОНТЕНТ
+══════════════════════════════════════════════════════ -->
+<div class="container">
+
+  <!-- Верхний ряд: баланс-виджет + график -->
+  <div class="top-row">
+
+    <!-- Виджет текущего баланса (левая колонка, как на макете) -->
+    <div class="balance-widget">
+      <div>
+        <div class="bw-label">Текущий баланс</div>
+        <div class="bw-amount" id="bwAmount">$0.00</div>
+        <div class="bw-pills">
+          <span class="bw-pill" id="pillPct">0.00%</span>
+          <span class="bw-pill" id="pillAbs">$0.00</span>
+        </div>
+      </div>
+
+      <div class="bw-rows">
+        <div class="bw-row">
+          <span>Прибыль</span>
+          <span class="v" id="bwProfit">$0.00</span>
+        </div>
+        <div class="bw-row">
+          <span>Инвестиции</span>
+          <span class="v" id="bwInvested">$0.00</span>
+        </div>
+        <div class="bw-row">
+          <span>% изм.</span>
+          <span class="v" id="bwPct">0.00%</span>
+        </div>
+      </div>
+
+      <!-- Переключатель периода графика -->
+      <div class="period-btns">
+        <button class="p-btn active" onclick="setPeriod(7, this)">7д</button>
+        <button class="p-btn"        onclick="setPeriod(30, this)">30д</button>
+        <button class="p-btn"        onclick="setPeriod(90, this)">90д</button>
+      </div>
+    </div>
+
+    <!-- График -->
+    <div class="chart-card">
+      <div class="chart-title">Динамика стоимости портфеля</div>
+      <div class="chart-inner">
+        <canvas id="portfolioChart" role="img" aria-label="График стоимости портфеля"></canvas>
+      </div>
+    </div>
+
+  </div><!-- /top-row -->
+
+  <!-- ── Секция: Акции ─────────────────────────────────── -->
+  <div class="asset-section">
+    <div class="section-head">
+      <div class="sec-icon stocks">📊</div>
+      <div class="sec-title">Акции (MOEX)</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Актив</th>
+          <th>Кол-во</th>
+          <th>Цена покупки</th>
+          <th>Текущая цена</th>
+          <th>Инвестиции</th>
+          <th>Текущая стоимость</th>
+          <th>Прибыль</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="stocksBody">
+        <tr class="empty-row"><td colspan="8">Акций пока нет</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Секция: Криптовалюты ──────────────────────────── -->
+  <div class="asset-section">
+    <div class="section-head">
+      <div class="sec-icon crypto">₿</div>
+      <div class="sec-title">Криптовалюты</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Актив</th>
+          <th>Кол-во</th>
+          <th>Цена покупки</th>
+          <th>Текущая цена</th>
+          <th>Инвестиции</th>
+          <th>Текущая стоимость</th>
+          <th>Прибыль</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="cryptoBody">
+        <tr class="empty-row"><td colspan="8">Криптовалют пока нет</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</div><!-- /container -->
+
+<!-- Подвал с курсами -->
+<footer class="rates-bar">
+  <span id="rateUsd">USD/RUB: —</span>
+  <span id="rateCny">CNY/RUB: —</span>
+  <span style="margin-left:auto;opacity:.6">Курсы обновляются раз в сутки · MOEX / ЦБ РФ</span>
+</footer>
+
+<!-- ══════════════════════════════════════════════════════
+  МОДАЛЬНОЕ ОКНО — ДОБАВИТЬ АКТИВ
+══════════════════════════════════════════════════════ -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+
+    <div class="modal-head">
+      <div class="modal-title">Добавить актив</div>
+      <button class="btn-close" onclick="closeModal()">&times;</button>
+    </div>
+
+    <!-- Поиск -->
+    <input
+      class="search-bar"
+      type="text"
+      id="assetSearch"
+      placeholder="Поиск по названию или тикеру..."
+      oninput="filterAssets()"
+    >
+
+    <!-- Акции MOEX -->
+    <div class="cat-title">📊 Акции MOEX</div>
+    <div class="asset-grid" id="stocksGrid">
+      {% for code, name in moex_stocks.items() %}
+      <div
+        class="asset-card"
+        data-search="{{ (name + ' ' + code) | lower }}"
+        onclick="selectAsset('stock', '{{ code }}', '{{ name }}')"
+      >
+        <div class="ac-name">{{ name }}</div>
+        <div class="ac-sub">{{ code }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Криптовалюты -->
+    <div class="cat-title" style="margin-top:16px;">₿ Криптовалюты</div>
+    <div class="asset-grid" id="cryptoGrid">
+      {% for cid, cname in crypto_assets.items() %}
+      <div
+        class="asset-card"
+        data-search="{{ (cname + ' ' + cid) | lower }}"
+        onclick="selectAsset('crypto', '{{ cid }}', '{{ cname }}')"
+      >
+        <div class="ac-name">{{ cname }}</div>
+        <div class="ac-sub">{{ cid }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Форма параметров покупки -->
+    <div class="add-form" id="addForm">
+      <div class="selected-banner" id="selectedBanner"></div>
+
+      <div class="form-error" id="formError"></div>
+
+      <!-- Скрытые поля -->
+      <input type="hidden" id="selType">
+      <input type="hidden" id="selCode">
+      <input type="hidden" id="selName">
+
+      <div class="form-grid">
+        <!-- Дата — calendar picker -->
+        <div class="f-row">
+          <label class="f-label" for="fDate">Дата покупки</label>
+          <input class="f-input" type="date" id="fDate" required>
+        </div>
+
+        <!-- Количество -->
+        <div class="f-row">
+          <label class="f-label" for="fQty">Количество</label>
+          <input class="f-input" type="number" id="fQty"
+            placeholder="Например: 10" min="0.000001" step="any" required>
+          <span class="f-hint" id="qtyHint"></span>
+        </div>
+
+        <!-- Цена покупки -->
+        <div class="f-row">
+          <label class="f-label" for="fPrice">Цена покупки (USD)</label>
+          <input class="f-input" type="number" id="fPrice"
+            placeholder="Например: 150.50" min="0.000001" step="any" required>
+          <span class="f-hint">Введите цену в долларах США</span>
+        </div>
+      </div>
+
+      <button class="btn-submit" onclick="submitAsset()">Добавить в портфель</button>
+    </div>
+
+  </div>
+</div><!-- /modal -->
+
+<script src="/static/js/dashboard.js"></script>
+<script>
+  /* Применить тему до рендера */
+  (function() {
+    const dark = localStorage.getItem('sc_theme') === 'dark';
+    if (dark) document.getElementById('htmlRoot').classList.add('dark');
+    const btn = document.getElementById('themeToggle');
+    if (btn && dark) { btn.classList.add('on'); btn.setAttribute('aria-checked', 'true'); }
+  })();
+</script>
+
+</body>
+</html>
