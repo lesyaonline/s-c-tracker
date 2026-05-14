@@ -45,14 +45,13 @@
 Изначально был создан **макет** сайта, на его основе писалось наше веб-приложение
 
 <img width="1280" height="713" alt="image" src="https://github.com/user-attachments/assets/947216b4-0c5d-41ed-8c46-aa7149c95a40" />
------
+
 <img width="379" height="556" alt="image" src="https://github.com/user-attachments/assets/18a08f3f-3219-4dd4-b8f1-ccc8b81cb583" />
----
+
 <img width="389" height="637" alt="image" src="https://github.com/user-attachments/assets/e5d6547a-6c8c-499b-9b6d-efbd08e1ced5" />
----
->
-## Как сайт выглядит сейчас
->
+
+
+# Как сайт выглядит сейчас
 <img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/1d17b5d5-4dfb-4bfb-acaf-f209731494be" />
 
 
