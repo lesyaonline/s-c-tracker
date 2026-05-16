@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru" id="htmlRoot">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S&C Tracker — Вход</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<div class="login-page">
+  <div class="login-box">
+
+    <!-- Логотип как на макете: [S&C] [Tracker] -->
+    <div style="display:flex;justify-content:center;margin-bottom:6px;">
+      <div class="logo">
+        <span class="logo-sc">S&amp;C</span>
+        <span class="logo-tracker">Tracker</span>
+      </div>
+    </div>
+    <p class="login-sub">Отслеживание акций и криптовалют</p>
+
+    {% if error %}
+    <div class="error-msg">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" id="loginForm">
+      <label class="login-label" for="loginInput">Имя пользователя</label>
+      <input
+        class="login-input"
+        type="text"
+        id="loginInput"
+        name="login"
+        placeholder="Введите логин"
+        maxlength="30"
+        autocomplete="off"
+        autofocus
+        required
+      >
+      <p class="login-hint">Только буквы (русские или латинские), без цифр и пробелов. Максимум 30 символов.</p>
+
+      <div class="error-msg" id="jsError" style="display:none;"></div>
+
+      <button class="login-btn" type="submit">Войти</button>
+    </form>
+
+    <button class="support-btn" onclick="document.getElementById('supportModal').classList.add('active')">
+      💙 Поддержите нас
+    </button>
+
+  </div>
+</div>
+
+<!-- Модальное окно благодарности -->
+<div class="modal" id="supportModal">
+  <div class="modal-box modal-box--small">
+    <div class="modal-head">
+      <div class="modal-title">💙 Поддержите проект</div>
+      <button class="btn-close" onclick="document.getElementById('supportModal').classList.remove('active')">&times;</button>
+    </div>
+    <div class="support-text">
+      Спасибо что пользуетесь нашим проектом, мы очень рады что можем делать ваш опыт лучше.
+      Наш проект работает на бесплатной основе лишь благодаря вашим щедрым пожертвованиям.
+    </div>
+    <div class="support-card">
+      <div class="support-card-label">Номер карты</div>
+      <div class="support-card-number">9999 6767 1489 1234</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* Применить сохранённую тему */
+  if (localStorage.getItem('sc_theme') === 'dark') {
+    document.getElementById('htmlRoot').classList.add('dark');
+  }
+
+  const input = document.getElementById('loginInput');
+  const errEl = document.getElementById('jsError');
+  const VALID = /^[A-Za-zА-Яа-яЁё]*$/;
+
+  /* Блокировать ввод запрещённых символов в реальном времени */
+  input.addEventListener('input', () => {
+    const val = input.value;
+    if (!VALID.test(val)) input.value = val.replace(/[^A-Za-zА-Яа-яЁё]/g, '');
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', e => {
+    const val = input.value.trim();
+    if (!val) { e.preventDefault(); showErr('Введите логин'); }
+    else if (val.length > 30) { e.preventDefault(); showErr('Логин не должен превышать 30 символов'); }
+    else if (!VALID.test(val)) { e.preventDefault(); showErr('Логин может содержать только буквы'); }
+  });
+
+  function showErr(msg) { errEl.textContent = msg; errEl.style.display = 'block'; }
+</script>
+
+</body>
+</html>
