@@ -55,9 +55,17 @@
 
 <img width="389" height="637" alt="image" src="https://github.com/user-attachments/assets/e5d6547a-6c8c-499b-9b6d-efbd08e1ced5" />
 
+<img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/1d17b5d5-4dfb-4bfb-acaf-f209731494be" />
+
 
 # Как сайт выглядит сейчас
-<img width="1280" height="722" alt="image" src="https://github.com/user-attachments/assets/1d17b5d5-4dfb-4bfb-acaf-f209731494be" />
+<img width="1280" height="636" alt="image" src="https://github.com/user-attachments/assets/2c7f1607-6275-4f34-b4cd-280c73d7f618" />
+
+<img width="1280" height="756" alt="image" src="https://github.com/user-attachments/assets/8361a996-69d0-45a8-8bc2-bc27668aec1e" />
+
+
+<img width="723" height="651" alt="image" src="https://github.com/user-attachments/assets/6ab1e832-c64f-453b-b544-cfd97f1fe268" />
+
 
 
 
